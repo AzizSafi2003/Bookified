@@ -1,13 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import {
-  SignedIn,
-  SignedOut,
-  SignInButton,
-  UserButton,
-  useUser,
-} from "@clerk/nextjs";
+import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -27,7 +21,6 @@ const navItems = [
 
 const Navbar = () => {
   const pathName = usePathname();
-  const { user } = useUser();
 
   return (
     <header className="w-full fixed z-50 bg-(--bg-primary)">
