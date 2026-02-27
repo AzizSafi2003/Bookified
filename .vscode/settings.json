@@ -1,0 +1,6 @@
+{
+  "cSpell.words": ["Bookified"],
+  "editor.formatOnSave": true,
+  "files.autoSave": "afterDelay",
+  "editor.defaultFormatter": "esbenp.prettier-vscode"
+}
