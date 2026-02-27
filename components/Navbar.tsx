@@ -1,9 +1,12 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Button } from "./ui/button";
+import { DollarSign } from "lucide-react";
 
 const navItems = [
   {
@@ -50,6 +53,28 @@ const Navbar = () => {
               </Link>
             );
           })}
+
+          <div className="flex gap-7.5 items-center">
+            <SignedOut>
+              <SignInButton mode="modal">
+                <Button asChild>
+                  <span>Sign In</span>
+                </Button>
+              </SignInButton>
+            </SignedOut>
+
+            <SignedIn>
+              <UserButton>
+                <UserButton.MenuItems>
+                  <UserButton.Link
+                    label="Subscription"
+                    labelIcon={<DollarSign className="size-4" />}
+                    href="/subscription"
+                  />
+                </UserButton.MenuItems>
+              </UserButton>
+            </SignedIn>
+          </div>
         </nav>
       </div>
     </header>
