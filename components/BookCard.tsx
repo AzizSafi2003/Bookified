@@ -16,16 +16,16 @@ const BookCard = ({ title, author, coverURL, slug }: BookCardProps) => {
               className="w-auto h-42.5 md:h-50 object-cover rounded-lg shadow-md"
             />
           </div>
-        </figure>
 
-        <figcaption className="mt-4 md:mt-5 flex-1 flex flex-col gap-1">
-          <h3 className="font-bold text-[#212a3b] line-clamp-1 text-base md:text-xl leading-5.5 md:leading-7.5">
-            {title}
-          </h3>
-          <p className="text-sm md:text-base font-medium text-[#3d485e] line-clamp-1">
-            {author}
-          </p>
-        </figcaption>
+          <figcaption className="mt-4 md:mt-5 flex-1 flex flex-col gap-1">
+            <h3 className="font-bold text-[#212a3b] line-clamp-1 text-base md:text-xl leading-5.5 md:leading-7.5">
+              {title}
+            </h3>
+            <p className="text-sm md:text-base font-medium text-[#3d485e] line-clamp-1">
+              {author}
+            </p>
+          </figcaption>
+        </figure>
       </article>
     </Link>
   );
