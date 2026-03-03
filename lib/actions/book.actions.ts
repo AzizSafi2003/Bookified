@@ -32,7 +32,7 @@ export const getAllBooks = async (search?: string) => {
     console.error("Error connecting to database", e);
     return {
       success: false,
-      error: e instanceof Error ? e.message : "Unexpected server error",
+      error: "Unable to fetch books right now. Please try again.",
     };
   }
 };
