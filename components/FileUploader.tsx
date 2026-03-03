@@ -41,7 +41,7 @@ const FileUploader = <T extends FieldValues>({
   const onRemove = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
-      onChange(null);
+      onChange(undefined);
       if (inputRef.current) {
         inputRef.current.value = "";
       }
