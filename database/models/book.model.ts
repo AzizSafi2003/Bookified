@@ -20,8 +20,6 @@ const BookSchema = new Schema<IBook>(
     coverBlobKey: { type: String },
     fileSize: { type: Number, required: true },
     totalSegments: { type: Number, default: 0 },
-    createdAt: Date,
-    updatedAt: Date,
   },
   { timestamps: true },
 );

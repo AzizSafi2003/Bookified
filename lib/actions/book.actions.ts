@@ -32,7 +32,7 @@ export const getAllBooks = async (search?: string) => {
     console.error("Error connecting to database", e);
     return {
       success: false,
-      error: e,
+      error: "Unable to fetch books right now. Please try again.",
     };
   }
 };
@@ -200,6 +200,7 @@ export const searchBookSegments = async (
 ) => {
   try {
     await connectToDatabase();
+    const safeLimit = Math.min(Math.max(limit, 1), 50);
 
     console.log(`Searching for: "${query}" in book ${bookId}`);
 
@@ -214,7 +215,7 @@ export const searchBookSegments = async (
       })
         .select("_id bookId content segmentIndex pageNumber wordCount")
         .sort({ score: { $meta: "textScore" } })
-        .limit(limit)
+        .limit(safeLimit)
         .lean();
     } catch {
       // Text index may not exist — fall through to regex fallback
@@ -224,6 +225,9 @@ export const searchBookSegments = async (
     // Fallback: regex search matching ANY keyword
     if (segments.length === 0) {
       const keywords = query.split(/\s+/).filter((k) => k.length > 2);
+      if (keywords.length === 0) {
+        return { success: true, data: [] };
+      }
       const pattern = keywords.map(escapeRegex).join("|");
 
       segments = await BookSegment.find({
@@ -232,7 +236,7 @@ export const searchBookSegments = async (
       })
         .select("_id bookId content segmentIndex pageNumber wordCount")
         .sort({ segmentIndex: 1 })
-        .limit(limit)
+        .limit(safeLimit)
         .lean();
     }
 

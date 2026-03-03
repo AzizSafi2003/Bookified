@@ -14,7 +14,7 @@ export const UploadSchema = z.object({
     .max(100, "Author name is too long"),
   persona: z.string().min(1, "Please select a voice"),
   pdfFile: z
-    .instanceof(File, { message: "PDF file is required" })
+    .instanceof(File, { error: "PDF file is required" })
     .refine(
       (file) => file.size <= MAX_FILE_SIZE,
       "File size must be less than 50MB",
