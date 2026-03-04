@@ -1,4 +1,4 @@
-import { MAX_FILE_SIZE } from "@/lib/constants";
+import { MAX_FILE_SIZE, MAX_IMAGE_SIZE } from "@/lib/constants";
 import { auth } from "@clerk/nextjs/server";
 import { handleUpload, HandleUploadBody } from "@vercel/blob/client";
 import { NextResponse } from "next/server";
@@ -11,12 +11,16 @@ export async function POST(request: Request): Promise<NextResponse> {
       body,
       request,
 
-      onBeforeGenerateToken: async () => {
+      onBeforeGenerateToken: async (pathname) => {
         const { userId } = await auth();
 
         if (!userId) {
           throw new Error("Unauthorized: User not authenticated");
         }
+        /* Determine max size based on content type (inferred from pathname extension) */
+        const isImage = /\.(jpe?g|png|webp)$/i.test(pathname);
+        const maxSize = isImage ? MAX_IMAGE_SIZE : MAX_FILE_SIZE;
+
         return {
           allowedContentTypes: [
             "application/pdf",
@@ -25,7 +29,7 @@ export async function POST(request: Request): Promise<NextResponse> {
             "image/webp",
           ],
           addRandomSuffix: true,
-          maximumSizeInBytes: MAX_FILE_SIZE,
+          maximumSizeInBytes: maxSize,
           tokenPayload: JSON.stringify({ userId }),
         };
       },
