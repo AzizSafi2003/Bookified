@@ -1,9 +1,10 @@
+"use client";
+
 import { startVoiceSession } from "@/lib/actions/session.actions";
 import { ASSISTANT_ID, DEFAULT_VOICE, VOICE_SETTINGS } from "@/lib/constants";
 import { IBook, Messages } from "@/types";
 import { useAuth } from "@clerk/nextjs";
 import { useCallback, useEffect, useRef, useState } from "react";
-import Vapi from "@vapi-ai/web";
 import { getVoice } from "@/lib/utils";
 
 export type CallStatus =
@@ -51,13 +52,21 @@ const useLatestRef = <T>(value: T) => {
 
 const VAPI_API_KEY = process.env.NEXT_PUBLIC_VAPI_API_KEY;
 
-let vapi: InstanceType<typeof Vapi>;
+// Module-level cache for Vapi instance (browser-only)
+let vapi: any = null;
 
-function getVapi() {
+// Dynamically import Vapi only in browser environment
+async function getVapi() {
+  if (typeof window === "undefined") {
+    throw new Error("Vapi can only be used in the browser");
+  }
+
   if (!vapi) {
     if (!VAPI_API_KEY) {
       throw new Error("VAPI API key is not defined");
     }
+
+    const { default: Vapi } = await import("@vapi-ai/web");
     vapi = new Vapi(VAPI_API_KEY);
   }
   return vapi;
@@ -71,7 +80,7 @@ export const useVapi = (book: IBook) => {
   const [currentMessage, setCurrentMessage] = useState("");
   const [currentUserMessage, setCurrentUserMessage] = useState("");
   const [duration, setDuration] = useState(0);
-  const [limitError, setLimitError] = useState<String | null>(null);
+  const [limitError, setLimitError] = useState<string | null>(null);
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const startTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -92,12 +101,9 @@ export const useVapi = (book: IBook) => {
     status === "starting";
 
   // Helper to generate unique key for deduplication
-  const getMessageKey = useCallback(
-    (role: string, content: string, timestamp?: number) => {
-      return `${role}-${content}-${timestamp || Date.now()}`;
-    },
-    [],
-  );
+  const getMessageKey = useCallback((role: string, content: string) => {
+    return `${role}-${content}`;
+  }, []);
 
   // Handle transcript messages (partial and final)
   const handleTranscript = useCallback(
@@ -258,24 +264,40 @@ export const useVapi = (book: IBook) => {
 
   // Set up VAPI event listeners
   useEffect(() => {
-    const vapiInstance = getVapi();
+    let isMounted = true;
+    let vapiInstance: any;
 
-    // Register event listeners
-    vapiInstance.on("message", handleMessage);
-    vapiInstance.on("speech-start", handleSpeechStart);
-    vapiInstance.on("speech-end", handleSpeechEnd);
-    vapiInstance.on("call-start", handleCallStart);
-    vapiInstance.on("call-end", handleCallEnd);
-    vapiInstance.on("error", handleError);
+    const setupVapi = async () => {
+      try {
+        vapiInstance = await getVapi();
+
+        if (!isMounted) return;
+
+        // Register event listeners
+        vapiInstance.on("message", handleMessage);
+        vapiInstance.on("speech-start", handleSpeechStart);
+        vapiInstance.on("speech-end", handleSpeechEnd);
+        vapiInstance.on("call-start", handleCallStart);
+        vapiInstance.on("call-end", handleCallEnd);
+        vapiInstance.on("error", handleError);
+      } catch (error) {
+        console.error("Failed to initialize Vapi:", error);
+      }
+    };
+
+    setupVapi();
 
     // Cleanup on unmount
     return () => {
-      vapiInstance.off("message", handleMessage);
-      vapiInstance.off("speech-start", handleSpeechStart);
-      vapiInstance.off("speech-end", handleSpeechEnd);
-      vapiInstance.off("call-start", handleCallStart);
-      vapiInstance.off("call-end", handleCallEnd);
-      vapiInstance.off("error", handleError);
+      isMounted = false;
+      if (vapiInstance) {
+        vapiInstance.off("message", handleMessage);
+        vapiInstance.off("speech-start", handleSpeechStart);
+        vapiInstance.off("speech-end", handleSpeechEnd);
+        vapiInstance.off("call-start", handleCallStart);
+        vapiInstance.off("call-end", handleCallEnd);
+        vapiInstance.off("error", handleError);
+      }
     };
   }, [
     handleMessage,
@@ -294,7 +316,7 @@ export const useVapi = (book: IBook) => {
     processedFinalMessages.current.clear();
 
     try {
-      const result = await startVoiceSession(userId, book._id);
+      const result = await startVoiceSession(book._id);
 
       if (!result.success) {
         setLimitError(
@@ -308,13 +330,24 @@ export const useVapi = (book: IBook) => {
 
       const firstMessage = `Hey, good to meet you. Quick question before we dive in: have you ever read ${book.title} yet? Or are we are starting fresh?`;
 
-      await getVapi().start(ASSISTANT_ID, {
+      const vapiInstance = await getVapi();
+
+      await vapiInstance.start(ASSISTANT_ID, {
         firstMessage,
         variableValues: {
           title: book.title,
           author: book.author,
           bookId: book._id,
         },
+        /* voice: {
+          provider: "11labs" as const,
+          voiceId: getVoice(voice).id,
+          model: "eleven_turbo_v2_5" as const,
+          stability: VOICE_SETTINGS.stability,
+          similarityBoost: VOICE_SETTINGS.similarityBoost,
+          style: VOICE_SETTINGS.style,
+          useSpeakerBoost: VOICE_SETTINGS.useSpeakerBoost,
+        }, */
       });
     } catch (error) {
       console.error("Error starting the call", error);
@@ -325,7 +358,8 @@ export const useVapi = (book: IBook) => {
 
   const stop = async () => {
     isStoppingRef.current = true;
-    await getVapi().stop();
+    const vapiInstance = await getVapi();
+    await vapiInstance.stop();
   };
 
   const clearErrors = () => {
@@ -339,6 +373,7 @@ export const useVapi = (book: IBook) => {
     currentMessage,
     currentUserMessage,
     duration,
+    limitError,
     start,
     stop,
     clearErrors,

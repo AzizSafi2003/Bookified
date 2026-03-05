@@ -4,18 +4,20 @@ import VoiceSession from "@/database/models/voice-session.model";
 import { connectToDatabase } from "@/database/mongoose";
 import { EndSessionResult, StartSessionResult } from "@/types";
 import { getCurrentBillingPeriodStart } from "../subscription-constants";
+import { auth } from "@clerk/nextjs/server";
 
 export const startVoiceSession = async (
-  clerkId: string,
   bookId: string,
 ): Promise<StartSessionResult> => {
   try {
+    const { userId } = await auth();
+    if (!userId) return { success: false, error: "Unauthorized" };
     await connectToDatabase();
 
     /* Limits/Plan to see whether a session is allowed: */
 
     const session = await VoiceSession.create({
-      clerkId,
+      clerkId: userId,
       bookId,
       startedAt: new Date(),
       billingPeriodStart: getCurrentBillingPeriodStart(),
@@ -41,12 +43,19 @@ export const endVoiceSession = async (
   durationSeconds: number,
 ): Promise<EndSessionResult> => {
   try {
+    const { userId } = await auth();
+    if (!userId) return { success: false, error: "Unauthorized" };
+
+    if (!Number.isFinite(durationSeconds) || durationSeconds < 0) {
+      return { success: false, error: "Invalid duration value" };
+    }
+
     await connectToDatabase();
 
-    const result = await VoiceSession.findByIdAndUpdate(sessionId, {
-      endedAt: new Date(),
-      durationSeconds,
-    });
+    const result = await VoiceSession.findOneAndUpdate(
+      { _id: sessionId, clerkId: userId },
+      { endedAt: new Date(), durationSeconds },
+    );
 
     if (!result) return { success: false, error: "Voice session not found!" };
 
