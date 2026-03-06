@@ -1,6 +1,9 @@
 "use client";
 
-import { startVoiceSession } from "@/lib/actions/session.actions";
+import {
+  endVoiceSession,
+  startVoiceSession,
+} from "@/lib/actions/session.actions";
 import { ASSISTANT_ID, DEFAULT_VOICE, VOICE_SETTINGS } from "@/lib/constants";
 import { IBook, Messages } from "@/types";
 import { useAuth } from "@clerk/nextjs";
@@ -72,11 +75,13 @@ async function getVapi() {
   return vapi;
 }
 
+type TranscriptMessage = Messages & { timestamp: number };
+
 export const useVapi = (book: IBook) => {
   const { userId } = useAuth();
 
   const [status, setStatus] = useState<CallStatus>("idle");
-  const [messages, setMessages] = useState<Messages[]>([]);
+  const [messages, setMessages] = useState<TranscriptMessage[]>([]);
   const [currentMessage, setCurrentMessage] = useState("");
   const [currentUserMessage, setCurrentUserMessage] = useState("");
   const [duration, setDuration] = useState(0);
@@ -86,9 +91,6 @@ export const useVapi = (book: IBook) => {
   const startTimerRef = useRef<NodeJS.Timeout | null>(null);
   const sessionIdRef = useRef<string | null>(null);
   const isStoppingRef = useRef<boolean>(false);
-
-  // Track processed final messages to prevent duplicates
-  const processedFinalMessages = useRef<Set<string>>(new Set());
 
   const bookRef = useLatestRef(book);
   const durationRef = useLatestRef(duration);
@@ -100,87 +102,75 @@ export const useVapi = (book: IBook) => {
     status === "speaking" ||
     status === "starting";
 
-  // Helper to generate unique key for deduplication
-  const getMessageKey = useCallback((role: string, content: string) => {
-    return `${role}-${content}`;
-  }, []);
+  // Check if this is an immediate consecutive duplicate (same role + content as last message)
+  const isImmediateDuplicate = (
+    prev: TranscriptMessage[],
+    role: "user" | "assistant",
+    content: string,
+  ) => {
+    const last = prev[prev.length - 1];
+    return !!last && last.role === role && last.content === content;
+  };
 
   // Handle transcript messages (partial and final)
-  const handleTranscript = useCallback(
-    (message: VapiTranscriptMessage) => {
-      const { transcriptType, role, transcript } = message;
+  const handleTranscript = useCallback((message: VapiTranscriptMessage) => {
+    const { transcriptType, role, transcript } = message;
 
-      if (role === "user") {
-        if (transcriptType === "partial") {
-          // Update live user transcript
-          setCurrentUserMessage(transcript);
-          setStatus("listening");
-        } else if (transcriptType === "final") {
-          // User finished speaking - clear current and add to messages
-          const messageKey = getMessageKey("user", transcript);
+    if (role === "user") {
+      if (transcriptType === "partial") {
+        // Update live user transcript
+        setCurrentUserMessage(transcript);
+        setStatus("listening");
+      } else if (transcriptType === "final") {
+        // User finished speaking - clear current and add to messages
+        setCurrentUserMessage("");
+        setStatus("thinking");
 
-          // Deduplicate: only add if we haven't seen this final transcript
-          if (!processedFinalMessages.current.has(messageKey)) {
-            processedFinalMessages.current.add(messageKey);
+        setMessages((prev) => {
+          // Only skip if this is an immediate consecutive duplicate
+          const isDuplicate = isImmediateDuplicate(prev, "user", transcript);
+          if (isDuplicate) return prev;
 
-            setCurrentUserMessage("");
-            setStatus("thinking");
-
-            setMessages((prev) => {
-              // Extra deduplication check on the array level
-              const isDuplicate = prev.some(
-                (msg) => msg.role === "user" && msg.content === transcript,
-              );
-              if (isDuplicate) return prev;
-
-              return [
-                ...prev,
-                {
-                  role: "user",
-                  content: transcript,
-                  timestamp: Date.now(),
-                },
-              ];
-            });
-          }
-        }
-      } else if (role === "assistant") {
-        if (transcriptType === "partial") {
-          // Update live assistant transcript
-          setCurrentMessage(transcript);
-          setStatus("speaking");
-        } else if (transcriptType === "final") {
-          // Assistant finished speaking - clear current and add to messages
-          const messageKey = getMessageKey("assistant", transcript);
-
-          // Deduplicate: only add if we haven't seen this final transcript
-          if (!processedFinalMessages.current.has(messageKey)) {
-            processedFinalMessages.current.add(messageKey);
-
-            setCurrentMessage("");
-
-            setMessages((prev) => {
-              // Extra deduplication check on the array level
-              const isDuplicate = prev.some(
-                (msg) => msg.role === "assistant" && msg.content === transcript,
-              );
-              if (isDuplicate) return prev;
-
-              return [
-                ...prev,
-                {
-                  role: "assistant",
-                  content: transcript,
-                  timestamp: Date.now(),
-                },
-              ];
-            });
-          }
-        }
+          return [
+            ...prev,
+            {
+              role: "user",
+              content: transcript,
+              timestamp: Date.now(),
+            },
+          ];
+        });
       }
-    },
-    [getMessageKey],
-  );
+    } else if (role === "assistant") {
+      if (transcriptType === "partial") {
+        // Update live assistant transcript
+        setCurrentMessage(transcript);
+        setStatus("speaking");
+      } else if (transcriptType === "final") {
+        // Assistant finished speaking - clear current and add to messages
+        setCurrentMessage("");
+
+        setMessages((prev) => {
+          // Only skip if this is an immediate consecutive duplicate
+          const isDuplicate = isImmediateDuplicate(
+            prev,
+            "assistant",
+            transcript,
+          );
+          if (isDuplicate) return prev;
+
+          return [
+            ...prev,
+            {
+              role: "assistant",
+              content: transcript,
+              timestamp: Date.now(),
+            },
+          ];
+        });
+      }
+    }
+  }, []);
 
   // Handle conversation updates (full conversation history)
   const handleConversationUpdate = useCallback(
@@ -233,7 +223,6 @@ export const useVapi = (book: IBook) => {
   // Call start handler
   const handleCallStart = useCallback(() => {
     setStatus("listening");
-    processedFinalMessages.current.clear(); // Reset deduplication on new call
   }, []);
 
   // Call end handler
@@ -313,7 +302,6 @@ export const useVapi = (book: IBook) => {
 
     setLimitError(null);
     setStatus("connecting");
-    processedFinalMessages.current.clear();
 
     try {
       const result = await startVoiceSession(book._id);
@@ -350,6 +338,12 @@ export const useVapi = (book: IBook) => {
         }, */
       });
     } catch (error) {
+      if (sessionIdRef.current) {
+        // FIXED: Only pass sessionId, no duration argument
+        await endVoiceSession(sessionIdRef.current);
+        sessionIdRef.current = null;
+      }
+
       console.error("Error starting the call", error);
       setStatus("idle");
       setLimitError("An error occurred while starting the call!");
@@ -358,8 +352,16 @@ export const useVapi = (book: IBook) => {
 
   const stop = async () => {
     isStoppingRef.current = true;
-    const vapiInstance = await getVapi();
-    await vapiInstance.stop();
+    try {
+      const vapiInstance = await getVapi();
+      await vapiInstance.stop();
+    } finally {
+      if (sessionIdRef.current) {
+        // FIXED: Only pass sessionId, no duration argument
+        await endVoiceSession(sessionIdRef.current);
+        sessionIdRef.current = null;
+      }
+    }
   };
 
   const clearErrors = () => {
