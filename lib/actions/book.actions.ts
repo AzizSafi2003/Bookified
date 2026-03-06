@@ -6,7 +6,7 @@ import { escapeRegex, generateSlug, serializeData } from "@/lib/utils";
 import Book from "@/database/models/book.model";
 import BookSegment from "@/database/models/book-segment.model";
 import mongoose from "mongoose";
-import { getUserPlan } from "../subscription.server";
+import { getUserPlan } from "@/lib/subscription.server";
 
 export const getAllBooks = async (search?: string) => {
   try {
@@ -32,7 +32,7 @@ export const getAllBooks = async (search?: string) => {
     console.error("Error connecting to database", e);
     return {
       success: false,
-      error: "Unable to fetch books right now. Please try again.",
+      error: e,
     };
   }
 };
@@ -81,8 +81,8 @@ export const createBook = async (data: CreateBook) => {
     }
 
     // Todo: Check subscription limits before creating a book
-    const { getUserPlan } = await import("../subscription.server");
-    const { PLAN_LIMITS } = await import("../subscription-constants");
+    const { getUserPlan } = await import("@/lib/subscription.server");
+    const { PLAN_LIMITS } = await import("@/lib/subscription-constants");
 
     const { auth } = await import("@clerk/nextjs/server");
     const { userId } = await auth();
@@ -200,7 +200,6 @@ export const searchBookSegments = async (
 ) => {
   try {
     await connectToDatabase();
-    const safeLimit = Math.min(Math.max(limit, 1), 50);
 
     console.log(`Searching for: "${query}" in book ${bookId}`);
 
@@ -215,7 +214,7 @@ export const searchBookSegments = async (
       })
         .select("_id bookId content segmentIndex pageNumber wordCount")
         .sort({ score: { $meta: "textScore" } })
-        .limit(safeLimit)
+        .limit(limit)
         .lean();
     } catch {
       // Text index may not exist — fall through to regex fallback
@@ -225,9 +224,6 @@ export const searchBookSegments = async (
     // Fallback: regex search matching ANY keyword
     if (segments.length === 0) {
       const keywords = query.split(/\s+/).filter((k) => k.length > 2);
-      if (keywords.length === 0) {
-        return { success: true, data: [] };
-      }
       const pattern = keywords.map(escapeRegex).join("|");
 
       segments = await BookSegment.find({
@@ -236,7 +232,7 @@ export const searchBookSegments = async (
       })
         .select("_id bookId content segmentIndex pageNumber wordCount")
         .sort({ segmentIndex: 1 })
-        .limit(safeLimit)
+        .limit(limit)
         .lean();
     }
 
