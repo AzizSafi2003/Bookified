@@ -42,6 +42,9 @@ const VapiControls = ({ book }: { book: IBook }) => {
                   isActive ? "Stop voice assistant" : "Start voice assistant"
                 }
                 aria-pressed={isActive}
+                title={
+                  isActive ? "Stop Voice Assistant" : "Start Voice Assistant"
+                }
                 className="group relative w-15! h-15! sm:w-15 sm:h-15 cursor-pointer rounded-full flex items-center justify-center transition-all duration-300 border-0 bg-white shadow-md active:scale-90"
               >
                 {isActive ? (

@@ -327,7 +327,7 @@ export const useVapi = (book: IBook) => {
           author: book.author,
           bookId: book._id,
         },
-        /* voice: {
+        voice: {
           provider: "11labs" as const,
           voiceId: getVoice(voice).id,
           model: "eleven_turbo_v2_5" as const,
@@ -335,7 +335,7 @@ export const useVapi = (book: IBook) => {
           similarityBoost: VOICE_SETTINGS.similarityBoost,
           style: VOICE_SETTINGS.style,
           useSpeakerBoost: VOICE_SETTINGS.useSpeakerBoost,
-        }, */
+        },
       });
     } catch (error) {
       if (sessionIdRef.current) {
