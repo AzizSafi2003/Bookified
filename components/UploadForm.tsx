@@ -246,7 +246,7 @@ const UploadForm = () => {
               name="persona"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="form-label">
+                  <FormLabel className="text-lg font-medium text-black mb-2 block">
                     Choose Assistant Voice
                   </FormLabel>
                   <FormControl>

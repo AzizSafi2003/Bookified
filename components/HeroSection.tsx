@@ -1,7 +1,20 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
+import { useAuth } from "@clerk/nextjs";
+import { toast } from "sonner";
 
 const HeroSection = () => {
+  const { userId } = useAuth();
+
+  const handleAddBookClick = (e: React.MouseEvent) => {
+    if (!userId) {
+      e.preventDefault();
+      toast.error("You must sign in first");
+    }
+  };
+
   return (
     <section className="max-w-7xl px-5 mx-auto w-full mb-10 md:mb-16">
       <div className="bg-[#f3e4c7] rounded-[14px] p-5 md:p-6 lg:py-6 lg:px-10 relative overflow-hidden flex items-center">
@@ -18,6 +31,7 @@ const HeroSection = () => {
             </p>
             <Link
               href="/books/new"
+              onClick={handleAddBookClick}
               className="inline-flex items-center justify-center gap-2 bg-white text-(--text-primary) px-5 py-3 rounded-[10px] font-bold text-base md:text-xl transition-all w-full lg:w-fit mt-4 hover:shadow-md/10"
             >
               <span className="text-3xl font-light mb-1 mr-2">+</span>
@@ -54,7 +68,7 @@ const HeroSection = () => {
                 <div className="w-10 h-10 min-w-10 min-h-10 rounded-full border border-gray-300 flex items-center justify-center font-medium text-lg list-none">
                   1
                 </div>
-                <div className="flex flex-col">
+                <div className="flex flex-col items-start">
                   <h3 className="font-semibold text-base text-[#222c37] leading-6">
                     Upload PDF
                   </h3>
@@ -67,7 +81,7 @@ const HeroSection = () => {
                 <div className="w-10 h-10 min-w-10 min-h-10 rounded-full border border-gray-300 flex items-center justify-center font-medium text-lg">
                   2
                 </div>
-                <div className="flex flex-col">
+                <div className="flex flex-col items-start">
                   <h3 className="font-semibold text-base text-[#222c37] leading-6">
                     AI Processing
                   </h3>
@@ -80,7 +94,7 @@ const HeroSection = () => {
                 <div className="w-10 h-10 min-w-10 min-h-10 rounded-full border border-gray-300 flex items-center justify-center font-medium text-lg">
                   3
                 </div>
-                <div className="flex flex-col">
+                <div className="flex flex-col items-start">
                   <h3 className="font-semibold text-base text-[#222c37] leading-6">
                     Voice Chat
                   </h3>

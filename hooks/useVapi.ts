@@ -7,8 +7,10 @@ import {
 import { ASSISTANT_ID, DEFAULT_VOICE, VOICE_SETTINGS } from "@/lib/constants";
 import { IBook, Messages } from "@/types";
 import { useAuth } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getVoice } from "@/lib/utils";
+import { useSubscription } from "./useSubscription";
 
 export type CallStatus =
   | "idle"
@@ -43,20 +45,31 @@ interface VapiConversationUpdateMessage {
   }>;
 }
 
-type VapiMessage = VapiTranscriptMessage | VapiConversationUpdateMessage;
+type VapiGenericMessage = {
+  type: VapiMessageType | string;
+};
 
-const useLatestRef = <T>(value: T) => {
-  const ref = useRef(value);
-  useEffect(() => {
-    ref.current = value;
-  }, [value]);
-  return ref;
+type VapiMessage =
+  | VapiTranscriptMessage
+  | VapiConversationUpdateMessage
+  | VapiGenericMessage;
+
+interface VapiClient {
+  on: (event: string, callback: (payload: unknown) => void) => void;
+  off: (event: string, callback: (payload: unknown) => void) => void;
+  start: (assistantId: string, options: unknown) => Promise<unknown>;
+  stop: () => Promise<unknown>;
+}
+
+const isVapiMessage = (value: unknown): value is VapiMessage => {
+  if (!value || typeof value !== "object") return false;
+  return "type" in value;
 };
 
 const VAPI_API_KEY = process.env.NEXT_PUBLIC_VAPI_API_KEY;
 
 // Module-level cache for Vapi instance (browser-only)
-let vapi: any = null;
+let vapi: VapiClient | null = null;
 
 // Dynamically import Vapi only in browser environment
 async function getVapi() {
@@ -70,7 +83,7 @@ async function getVapi() {
     }
 
     const { default: Vapi } = await import("@vapi-ai/web");
-    vapi = new Vapi(VAPI_API_KEY);
+    vapi = new Vapi(VAPI_API_KEY) as unknown as VapiClient;
   }
   return vapi;
 }
@@ -79,21 +92,24 @@ type TranscriptMessage = Messages & { timestamp: number };
 
 export const useVapi = (book: IBook) => {
   const { userId } = useAuth();
+  const router = useRouter();
+  const { limits, isLoaded: isSubscriptionLoaded } = useSubscription();
 
   const [status, setStatus] = useState<CallStatus>("idle");
   const [messages, setMessages] = useState<TranscriptMessage[]>([]);
   const [currentMessage, setCurrentMessage] = useState("");
   const [currentUserMessage, setCurrentUserMessage] = useState("");
   const [duration, setDuration] = useState(0);
+  const [maxDurationMinutes, setMaxDurationMinutes] = useState(
+    limits.maxDurationPerSession,
+  );
   const [limitError, setLimitError] = useState<string | null>(null);
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const startTimerRef = useRef<NodeJS.Timeout | null>(null);
   const sessionIdRef = useRef<string | null>(null);
   const isStoppingRef = useRef<boolean>(false);
+  const hasLimitRedirectedRef = useRef<boolean>(false);
 
-  const bookRef = useLatestRef(book);
-  const durationRef = useLatestRef(duration);
   const voice = book.persona || DEFAULT_VOICE;
 
   const isActive =
@@ -101,6 +117,18 @@ export const useVapi = (book: IBook) => {
     status === "thinking" ||
     status === "speaking" ||
     status === "starting";
+
+  useEffect(() => {
+    if (!isSubscriptionLoaded) return;
+    setMaxDurationMinutes(limits.maxDurationPerSession);
+  }, [isSubscriptionLoaded, limits.maxDurationPerSession]);
+
+  const clearTimer = useCallback(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+  }, []);
 
   // Check if this is an immediate consecutive duplicate (same role + content as last message)
   const isImmediateDuplicate = (
@@ -149,6 +177,7 @@ export const useVapi = (book: IBook) => {
       } else if (transcriptType === "final") {
         // Assistant finished speaking - clear current and add to messages
         setCurrentMessage("");
+        setStatus("listening");
 
         setMessages((prev) => {
           // Only skip if this is an immediate consecutive duplicate
@@ -195,13 +224,19 @@ export const useVapi = (book: IBook) => {
 
   // Main message handler
   const handleMessage = useCallback(
-    (message: VapiMessage) => {
+    (rawMessage: unknown) => {
+      if (!isVapiMessage(rawMessage)) return;
+      const message = rawMessage;
+
       switch (message.type) {
         case "transcript":
-          handleTranscript(message);
+          handleTranscript(message as VapiTranscriptMessage);
           break;
         case "conversation-update":
-          handleConversationUpdate(message);
+          handleConversationUpdate(message as VapiConversationUpdateMessage);
+          break;
+        case "function-call":
+          setStatus("thinking");
           break;
         default:
           // Handle other message types if needed
@@ -217,44 +252,51 @@ export const useVapi = (book: IBook) => {
   }, []);
 
   const handleSpeechEnd = useCallback(() => {
-    // Status will be updated by transcript final or other events
+    if (!isStoppingRef.current) {
+      setStatus("listening");
+    }
   }, []);
 
   // Call start handler
   const handleCallStart = useCallback(() => {
+    hasLimitRedirectedRef.current = false;
+    setDuration(0);
     setStatus("listening");
-  }, []);
+    clearTimer();
+    timerRef.current = setInterval(() => {
+      setDuration((prev) => prev + 1);
+    }, 1000);
+  }, [clearTimer]);
 
   // Call end handler
   const handleCallEnd = useCallback(() => {
+    if (sessionIdRef.current) {
+      void endVoiceSession(sessionIdRef.current);
+      sessionIdRef.current = null;
+    }
+
     setStatus("idle");
     setCurrentMessage("");
     setCurrentUserMessage("");
-
-    // Clear any pending timers
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
-    if (startTimerRef.current) {
-      clearTimeout(startTimerRef.current);
-      startTimerRef.current = null;
-    }
-
+    clearTimer();
     isStoppingRef.current = false;
-  }, []);
+  }, [clearTimer]);
 
   // Error handler
-  const handleError = useCallback((error: any) => {
-    console.error("VAPI Error:", error);
-    setLimitError("An error occurred during the call");
-    setStatus("idle");
-  }, []);
+  const handleError = useCallback(
+    (error: unknown) => {
+      console.error("VAPI Error:", error);
+      setLimitError("An error occurred during the call");
+      setStatus("idle");
+      clearTimer();
+    },
+    [clearTimer],
+  );
 
   // Set up VAPI event listeners
   useEffect(() => {
     let isMounted = true;
-    let vapiInstance: any;
+    let vapiInstance: VapiClient | undefined;
 
     const setupVapi = async () => {
       try {
@@ -297,11 +339,45 @@ export const useVapi = (book: IBook) => {
     handleError,
   ]);
 
+  useEffect(() => {
+    if (!isActive || status === "starting") return;
+    if (!sessionIdRef.current || isStoppingRef.current) return;
+    if (hasLimitRedirectedRef.current) return;
+
+    const maxDurationSeconds = maxDurationMinutes * 60;
+    if (duration < maxDurationSeconds) return;
+
+    hasLimitRedirectedRef.current = true;
+    setLimitError(
+      `Your session reached the ${maxDurationMinutes}-minute limit for your plan.`,
+    );
+
+    const enforceLimit = async () => {
+      try {
+        isStoppingRef.current = true;
+        clearTimer();
+        const vapiInstance = await getVapi();
+        await vapiInstance.stop();
+
+        if (sessionIdRef.current) {
+          await endVoiceSession(sessionIdRef.current);
+          sessionIdRef.current = null;
+        }
+      } finally {
+        router.push("/");
+      }
+    };
+
+    void enforceLimit();
+  }, [clearTimer, duration, isActive, maxDurationMinutes, router, status]);
+
   const start = async () => {
     if (!userId) return setLimitError("Please login to start a conversation!");
 
     setLimitError(null);
     setStatus("connecting");
+    setDuration(0);
+    hasLimitRedirectedRef.current = false;
 
     try {
       const result = await startVoiceSession(book._id);
@@ -315,6 +391,10 @@ export const useVapi = (book: IBook) => {
       }
 
       sessionIdRef.current = result.sessionId || null;
+      setMaxDurationMinutes(
+        result.maxDurationMinutes ?? limits.maxDurationPerSession,
+      );
+      setStatus("starting");
 
       const firstMessage = `Hey, good to meet you. Quick question before we dive in: have you ever read ${book.title} yet? Or are we are starting fresh?`;
 
@@ -352,6 +432,7 @@ export const useVapi = (book: IBook) => {
 
   const stop = async () => {
     isStoppingRef.current = true;
+    clearTimer();
     try {
       const vapiInstance = await getVapi();
       await vapiInstance.stop();
@@ -375,6 +456,7 @@ export const useVapi = (book: IBook) => {
     currentMessage,
     currentUserMessage,
     duration,
+    maxDurationMinutes,
     limitError,
     start,
     stop,

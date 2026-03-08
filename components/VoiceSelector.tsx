@@ -24,7 +24,7 @@ const VoiceSelector = ({
         {/* Male Voices */}
         <div className="space-y-4">
           <h4 className="text-sm font-medium text-[#777]">Male Voices</h4>
-          <div className="voice-selector-options">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 items-center justify-center p-4 border border-(--border-subtle) rounded-lg cursor-pointer transition-all">
             {voiceCategories.male.map((voiceId) => {
               const voice = voiceOptions[voiceId as keyof typeof voiceOptions];
               const isSelected = value === voiceId;
@@ -32,7 +32,7 @@ const VoiceSelector = ({
                 <Label
                   key={voiceId}
                   className={cn(
-                    "voice-selector-option",
+                    "voice-selector-option h-32 md:h-24",
                     isSelected
                       ? "voice-selector-option-selected"
                       : "voice-selector-option-default",
@@ -73,7 +73,7 @@ const VoiceSelector = ({
         {/* Female Voices */}
         <div className="space-y-4">
           <h4 className="text-sm font-medium text-[#777]">Female Voices</h4>
-          <div className="voice-selector-options">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 items-center justify-center p-4 border border-(--border-subtle) rounded-lg cursor-pointer transition-all">
             {voiceCategories.female.map((voiceId) => {
               const voice = voiceOptions[voiceId as keyof typeof voiceOptions];
               const isSelected = value === voiceId;
@@ -81,7 +81,7 @@ const VoiceSelector = ({
                 <Label
                   key={voiceId}
                   className={cn(
-                    "voice-selector-option",
+                    "voice-selector-option h-32 md:h-24",
                     isSelected
                       ? "voice-selector-option-selected"
                       : "voice-selector-option-default",

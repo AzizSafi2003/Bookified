@@ -15,10 +15,36 @@ const VapiControls = ({ book }: { book: IBook }) => {
     currentMessage,
     currentUserMessage,
     duration,
+    maxDurationMinutes,
+    limitError,
     start,
     stop,
     clearErrors,
   } = useVapi(book);
+
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  const statusLabelByState = {
+    idle: "Ready",
+    connecting: "Connecting",
+    starting: "Starting",
+    listening: "Listening",
+    thinking: "Thinking",
+    speaking: "Speaking",
+  } as const;
+
+  const statusDotClassByState = {
+    idle: "vapi-status-dot-ready",
+    connecting: "vapi-status-dot-connecting",
+    starting: "vapi-status-dot-connecting",
+    listening: "vapi-status-dot-listening",
+    thinking: "vapi-status-dot-thinking",
+    speaking: "vapi-status-dot-speaking",
+  } as const;
 
   return (
     <>
@@ -36,7 +62,14 @@ const VapiControls = ({ book }: { book: IBook }) => {
             />
             <div className="absolute -bottom-1 -right-1 sm:-bottom-2 sm:-right-2">
               <button
-                onClick={isActive ? stop : start}
+                onClick={() => {
+                  if (isActive) {
+                    void stop();
+                    return;
+                  }
+                  clearErrors();
+                  void start();
+                }}
                 disabled={status === "connecting" || status === "starting"}
                 aria-label={
                   isActive ? "Stop voice assistant" : "Start voice assistant"
@@ -45,12 +78,16 @@ const VapiControls = ({ book }: { book: IBook }) => {
                 title={
                   isActive ? "Stop Voice Assistant" : "Start Voice Assistant"
                 }
-                className="group relative w-15! h-15! sm:w-15 sm:h-15 cursor-pointer rounded-full flex items-center justify-center transition-all duration-300 border-0 bg-white shadow-md active:scale-90"
+                className={`group relative w-15! h-15! sm:w-15 sm:h-15 cursor-pointer rounded-full flex items-center justify-center transition-all duration-300 border-0 shadow-md active:scale-90 ${isActive ? "bg-[#212a3b] animate-pulse" : "bg-white"}`}
               >
                 {isActive ? (
-                  <Mic className="size-7 text-[#212a3b] transition-colors duration-300 group-hover:text-gray-400" />
+                  <Mic
+                    className={`size-7 transition-colors duration-300 group-hover:text-gray-400 ${isActive ? "text-white" : "text-[#212a3b]"}`}
+                  />
                 ) : (
-                  <MicOff className="size-7 text-[#212a3b] transition-colors duration-300 group-hover:text-gray-400" />
+                  <MicOff
+                    className={`size-7 transition-colors duration-300 group-hover:text-gray-400 ${isActive ? "text-white" : "text-[#212a3b]"}`}
+                  />
                 )}
               </button>
             </div>
@@ -65,10 +102,12 @@ const VapiControls = ({ book }: { book: IBook }) => {
             </div>
 
             <div className="flex flex-wrap gap-3">
-              <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg">
-                <span className="inline-block w-3 h-3 rounded-full bg-gray-400" />
-                <span className="text-sm font-medium text-[#212a3b]">
-                  Ready
+              <div className="vapi-status-indicator">
+                <span
+                  className={`vapi-status-dot ${statusDotClassByState[status]}`}
+                />
+                <span className="vapi-status-text">
+                  {statusLabelByState[status]}
                 </span>
               </div>
 
@@ -80,12 +119,17 @@ const VapiControls = ({ book }: { book: IBook }) => {
 
               <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg">
                 <span className="text-sm font-medium text-[#212a3b]">
-                  0:00/15:00
+                  {formatDuration(duration)}/
+                  {formatDuration(maxDurationMinutes * 60)}
                 </span>
               </div>
             </div>
           </div>
         </div>
+
+        {limitError && (
+          <p className="text-sm text-red-600 font-medium">{limitError}</p>
+        )}
 
         {/* Header Body */}
         <div className="min-h-100 max-h-[60vh] flex flex-col">

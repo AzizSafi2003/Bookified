@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Serif, Mona_Sans } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
-import "./globals.css";
+
 import Navbar from "@/components/Navbar";
+import "./globals.css";
+import { Toaster } from "@/components/ui/sonner";
 
 const ibmPlexSerif = IBM_Plex_Serif({
   variable: "--font-ibm-plex-serif",
@@ -18,7 +20,7 @@ const monaSans = Mona_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Bookified | AI Powered Library",
+  title: "Bookified",
   description:
     "Transform your books into interactive AI conversations. Upload PDFs, and chat with your books using voice.",
 };
@@ -36,6 +38,7 @@ export default function RootLayout({
         >
           <Navbar />
           {children}
+          <Toaster />
         </body>
       </html>
     </ClerkProvider>
