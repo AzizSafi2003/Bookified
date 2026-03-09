@@ -10,7 +10,7 @@ import {
 } from "@clerk/nextjs";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { Button } from "./ui/button";
 import { DollarSign } from "lucide-react";
 import { toast } from "sonner"; // or import toast from "react-hot-toast"
@@ -30,8 +30,7 @@ const navItems = [
 
 const Navbar = () => {
   const pathName = usePathname();
-  const router = useRouter();
-  const { userId, isLoaded } = useAuth();
+  const { userId } = useAuth();
 
   const handleNavClick = (
     e: React.MouseEvent,
@@ -49,8 +48,8 @@ const Navbar = () => {
   };
 
   return (
-    <header className="w-full fixed z-50 bg-(--bg-primary) px-4 xl:px-37 border-b">
-      <div className="wrapper navbar-height py-4 flex justify-between items-center">
+    <header className="w-full fixed z-50 bg-(--bg-primary) xl:px-37 border-b">
+      <div className="max-w-7xl px-5 mx-auto w-full h-[var(--navbar-height)] py-4 flex justify-between items-center">
         <Link href="/" className="flex gap-0.5 items-center">
           <Image
             src="/assets/logo.png"

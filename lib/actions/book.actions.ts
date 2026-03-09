@@ -196,6 +196,82 @@ export const saveBookSegments = async (
   }
 };
 
+export const replaceBookSegments = async (
+  bookId: string,
+  clerkId: string,
+  segments: TextSegment[],
+) => {
+  let session: mongoose.ClientSession | undefined;
+
+  try {
+    await connectToDatabase();
+
+    const { auth } = await import("@clerk/nextjs/server");
+    const { userId } = await auth();
+
+    if (!userId || userId !== clerkId) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    const book = await Book.findOne({ _id: bookId, clerkId: userId }).lean();
+
+    if (!book) {
+      return { success: false, error: "Book not found" };
+    }
+
+    // Start transaction session
+    session = await mongoose.startSession();
+
+    await session.withTransaction(async () => {
+      // Delete existing segments - use _id filter type
+      await BookSegment.deleteMany(
+        { bookId: new mongoose.Types.ObjectId(bookId) },
+        { session },
+      );
+
+      // Prepare new segments
+      const segmentsToInsert = segments.map(
+        ({ text, segmentIndex, pageNumber, wordCount }) => ({
+          clerkId: userId,
+          bookId: new mongoose.Types.ObjectId(bookId),
+          content: text,
+          segmentIndex,
+          pageNumber,
+          wordCount,
+        }),
+      );
+
+      // Insert new segments if any
+      if (segmentsToInsert.length > 0) {
+        await BookSegment.insertMany(segmentsToInsert, { session });
+      }
+
+      // Update total segments count
+      await Book.findByIdAndUpdate(
+        bookId,
+        { totalSegments: segmentsToInsert.length },
+        { session },
+      );
+    });
+
+    return {
+      success: true,
+      data: { segmentsCreated: segments.length },
+    };
+  } catch (e) {
+    console.error("Error replacing book segments", e);
+    return {
+      success: false,
+      error: e,
+    };
+  } finally {
+    // Always end session if it was created
+    if (session) {
+      await session.endSession();
+    }
+  }
+};
+
 // Searches book segments using MongoDB text search with regex fallback
 export const searchBookSegments = async (
   bookId: string,

@@ -11,8 +11,8 @@ export default async function EditBookPage({
   const { slug } = await params;
 
   if (!userId) {
-    redirect(`/sign-in?returnBackUrl=/books/${slug}/edit`);
+    redirect(`/sign-in?returnBackUrl=/book/edit/${slug}`);
   }
 
-  return null;
+  redirect(`/book/edit/${slug}`);
 }

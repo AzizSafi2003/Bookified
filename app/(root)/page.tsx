@@ -1,7 +1,8 @@
 import HeroSection from "@/components/HeroSection";
-import BookCard from "@/components/BookCard";
 import HomeBooksSearch from "@/components/HomeBooksSearch";
+import HomeBooksPagination from "@/components/HomeBooksPagination";
 import { getAllBooks } from "@/lib/actions/book.actions";
+import { auth } from "@clerk/nextjs/server";
 import { SignedIn, SignedOut, SignInButton } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { User } from "lucide-react";
@@ -13,13 +14,14 @@ const page = async ({
 }: {
   searchParams: Promise<{ q?: string }>;
 }) => {
+  const { userId } = await auth();
   const { q = "" } = await searchParams;
   const query = q.trim();
   const bookResults = await getAllBooks(query);
   const books = bookResults.success ? (bookResults.data ?? []) : [];
 
   return (
-    <main className="max-w-7xl px-5 mx-auto w-full container">
+    <main className="max-w-7xl px-5 mx-auto w-full pt-[94px] pb-18 min-h-screen">
       <HeroSection />
 
       <SignedIn>
@@ -31,26 +33,20 @@ const page = async ({
             <HomeBooksSearch initialQuery={query} />
           </div>
         </section>
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-3 md:gap-x-10 gap-y-7 md:gap-y-9">
-          {books.map((book) => (
-            <BookCard
-              key={book._id}
-              title={book.title}
-              author={book.author}
-              coverURL={book.coverURL}
-              slug={book.slug}
-            />
-          ))}
-        </div>
+        <HomeBooksPagination
+          key={query || "all-books"}
+          books={books}
+          currentUserId={userId}
+        />
       </SignedIn>
 
       <SignedOut>
-        <div className="transcript-empty">
+        <div className="flex flex-col items-center justify-center min-h-[350px] text-center flex-1">
           <User className="size-12 text-[#212a3b] mb-4" />
-          <h2 className="transcript-empty-text">
+          <h2 className="text-[var(--text-primary)] text-lg font-bold">
             <b>Not Authorized!</b>
           </h2>
-          <p className="text-(--text-muted) text-base mt-1">
+          <p className="text-[var(--text-muted)] text-base mt-1">
             Please sign in to access your personalized library and start
             listening to your books.
           </p>

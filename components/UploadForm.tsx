@@ -19,12 +19,11 @@ import { Button } from "@/components/ui/button";
 import {
   ACCEPTED_PDF_TYPES,
   ACCEPTED_IMAGE_TYPES,
-  DEFAULT_VOICE,
 } from "@/lib/constants";
 import FileUploader from "./FileUploader";
 import VoiceSelector from "./VoiceSelector";
 import LoadingOverlay from "./LoadingOverlay";
-import { useAuth, useUser } from "@clerk/nextjs";
+import { useAuth } from "@clerk/nextjs";
 import { toast } from "sonner";
 import {
   checkBookExists,
@@ -94,6 +93,7 @@ const UploadForm = () => {
       });
 
       let coverUrl: string;
+      let coverBlobKey: string | undefined;
 
       if (data.coverImage) {
         const coverFile = data.coverImage;
@@ -107,6 +107,7 @@ const UploadForm = () => {
           },
         );
         coverUrl = uploadedCoverBlob.url;
+        coverBlobKey = uploadedCoverBlob.pathname;
       } else {
         const response = await fetch(parsedPDF.cover);
         const blob = await response.blob();
@@ -117,6 +118,7 @@ const UploadForm = () => {
           contentType: "image/png",
         });
         coverUrl = uploadedCoverBlob.url;
+        coverBlobKey = uploadedCoverBlob.pathname;
       }
 
       const book = await createBook({
@@ -127,6 +129,7 @@ const UploadForm = () => {
         fileURL: uploadedPdfBlob.url,
         fileBlobKey: uploadedPdfBlob.pathname,
         coverURL: coverUrl,
+        coverBlobKey,
         fileSize: pdfFile.size,
       });
 
@@ -173,7 +176,7 @@ const UploadForm = () => {
     <>
       {isSubmitting && <LoadingOverlay />}
 
-      <div className="new-book-wrapper">
+      <div className="mx-auto max-w-2xl space-y-6 mt-12 mb-20">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
             {/* 1. PDF File Upload */}
@@ -206,10 +209,12 @@ const UploadForm = () => {
               name="title"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="form-label">Title</FormLabel>
+                  <FormLabel className="text-lg font-medium text-black mb-2 block">
+                    Title
+                  </FormLabel>
                   <FormControl>
                     <Input
-                      className="form-input"
+                      className="w-full p-4 bg-white rounded-lg text-lg font-medium text-[#222] placeholder:text-[#999]"
                       placeholder="ex: Rich Dad Poor Dad"
                       {...field}
                       disabled={isSubmitting}
@@ -226,10 +231,12 @@ const UploadForm = () => {
               name="author"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="form-label">Author Name</FormLabel>
+                  <FormLabel className="text-lg font-medium text-black mb-2 block">
+                    Author Name
+                  </FormLabel>
                   <FormControl>
                     <Input
-                      className="form-input"
+                      className="w-full p-4 bg-white rounded-lg text-lg font-medium text-[#222] placeholder:text-[#999]"
                       placeholder="ex: Robert Kiyosaki"
                       {...field}
                       disabled={isSubmitting}
@@ -262,7 +269,11 @@ const UploadForm = () => {
             />
 
             {/* 6. Submit Button */}
-            <Button type="submit" className="form-btn" disabled={isSubmitting}>
+            <Button
+              type="submit"
+              className="!w-full h-14 rounded-[10px] bg-[#663820] cursor-pointer hover:bg-[#7a4528] text-xl text-white font-bold transition-colors font-serif"
+              disabled={isSubmitting}
+            >
               Begin Synthesis
             </Button>
           </form>

@@ -38,19 +38,19 @@ const VapiControls = ({ book }: { book: IBook }) => {
   } as const;
 
   const statusDotClassByState = {
-    idle: "vapi-status-dot-ready",
-    connecting: "vapi-status-dot-connecting",
-    starting: "vapi-status-dot-connecting",
-    listening: "vapi-status-dot-listening",
-    thinking: "vapi-status-dot-thinking",
-    speaking: "vapi-status-dot-speaking",
+    idle: "bg-gray-400",
+    connecting: "bg-yellow-500 animate-pulse",
+    starting: "bg-yellow-500 animate-pulse",
+    listening: "bg-green-500 animate-pulse",
+    thinking: "bg-yellow-500 animate-pulse",
+    speaking: "bg-green-500 animate-pulse",
   } as const;
 
   return (
     <>
       <div className="max-w-4xl mx-auto flex flex-col gap-8">
         {/* Header Card */}
-        <div className="flex items-center gap-6 bg-[#f3e4c7] rounded-[14px] p-6 relative overflow-hidden">
+        <div className="flex flex-col md:flex-row items-center gap-6 bg-[#f3e4c7] rounded-[14px] p-6 relative overflow-hidden">
           <div className="relative shrink-0">
             <Image
               src={book.coverURL || placeholderImage}
@@ -95,18 +95,18 @@ const VapiControls = ({ book }: { book: IBook }) => {
 
           <div className="flex flex-col gap-4 flex-1">
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold font-serif text-[#212a3b] mb-1">
+              <h1 className="text-xl md:text-2xl font-bold font-serif text-[#212a3b] mb-1">
                 {book.title}
               </h1>
               <p className="text-[#3d485e] font-medium">by {book.author}</p>
             </div>
 
             <div className="flex flex-wrap gap-3">
-              <div className="vapi-status-indicator">
+              <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-[4px]">
                 <span
-                  className={`vapi-status-dot ${statusDotClassByState[status]}`}
+                  className={`inline-block w-3 h-3 rounded-full ${statusDotClassByState[status]}`}
                 />
-                <span className="vapi-status-text">
+                <span className="text-sm font-medium text-[#212a3b] font-serif">
                   {statusLabelByState[status]}
                 </span>
               </div>
