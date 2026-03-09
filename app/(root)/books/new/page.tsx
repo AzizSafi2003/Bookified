@@ -1,7 +1,15 @@
 import UploadForm from "@/components/UploadForm";
+import { auth } from "@clerk/nextjs/server";
+import { redirect } from "next/navigation";
 import React from "react";
 
-const page = () => {
+const page = async () => {
+  const { userId } = await auth();
+
+  if (!userId) {
+    redirect("/sign-in?returnBackUrl=/books/new");
+  }
+
   return (
     <main className="max-w-7xl px-5 mx-auto w-full pt-23.5 pb-18 min-h-screen">
       <div className="mx-auto max-w-180 space-y-10">
