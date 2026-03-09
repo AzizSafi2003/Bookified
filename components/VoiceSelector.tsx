@@ -32,11 +32,12 @@ const VoiceSelector = ({
                 <Label
                   key={voiceId}
                   className={cn(
-                    "voice-selector-option h-32 md:h-24",
+                    "flex-1 flex items-center justify-center gap-3 p-4 border border-[var(--border-subtle)] rounded-lg cursor-pointer transition-all [box-shadow:var(--shadow-soft-sm)] hover:[box-shadow:var(--shadow-soft)] hover:-translate-y-0.5 h-32 md:h-24",
                     isSelected
-                      ? "voice-selector-option-selected"
-                      : "voice-selector-option-default",
-                    disabled && "voice-selector-option-disabled",
+                      ? "bg-[var(--accent-light)] border-[var(--accent-warm)]"
+                      : "bg-white hover:bg-[var(--bg-secondary)]",
+                    disabled &&
+                      "opacity-50 cursor-not-allowed hover:translate-y-0 hover:[box-shadow:var(--shadow-soft-sm)]",
                   )}
                 >
                   <RadioGroupItem
@@ -81,11 +82,12 @@ const VoiceSelector = ({
                 <Label
                   key={voiceId}
                   className={cn(
-                    "voice-selector-option h-32 md:h-24",
+                    "flex-1 flex items-center justify-center gap-3 p-4 border border-[var(--border-subtle)] rounded-lg cursor-pointer transition-all [box-shadow:var(--shadow-soft-sm)] hover:[box-shadow:var(--shadow-soft)] hover:-translate-y-0.5 h-32 md:h-24",
                     isSelected
-                      ? "voice-selector-option-selected"
-                      : "voice-selector-option-default",
-                    disabled && "voice-selector-option-disabled",
+                      ? "bg-[var(--accent-light)] border-[var(--accent-warm)]"
+                      : "bg-white hover:bg-[var(--bg-secondary)]",
+                    disabled &&
+                      "opacity-50 cursor-not-allowed hover:translate-y-0 hover:[box-shadow:var(--shadow-soft-sm)]",
                   )}
                 >
                   <RadioGroupItem

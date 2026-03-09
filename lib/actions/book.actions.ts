@@ -196,6 +196,59 @@ export const saveBookSegments = async (
   }
 };
 
+export const replaceBookSegments = async (
+  bookId: string,
+  clerkId: string,
+  segments: TextSegment[],
+) => {
+  try {
+    await connectToDatabase();
+
+    const { auth } = await import("@clerk/nextjs/server");
+    const { userId } = await auth();
+
+    if (!userId || userId !== clerkId) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    const book = await Book.findOne({ _id: bookId, clerkId: userId }).lean();
+
+    if (!book) {
+      return { success: false, error: "Book not found" };
+    }
+
+    await BookSegment.deleteMany({ bookId });
+
+    const segmentsToInsert = segments.map(
+      ({ text, segmentIndex, pageNumber, wordCount }) => ({
+        clerkId: userId,
+        bookId,
+        content: text,
+        segmentIndex,
+        pageNumber,
+        wordCount,
+      }),
+    );
+
+    if (segmentsToInsert.length > 0) {
+      await BookSegment.insertMany(segmentsToInsert);
+    }
+
+    await Book.findByIdAndUpdate(bookId, { totalSegments: segmentsToInsert.length });
+
+    return {
+      success: true,
+      data: { segmentsCreated: segmentsToInsert.length },
+    };
+  } catch (e) {
+    console.error("Error replacing book segments", e);
+    return {
+      success: false,
+      error: e,
+    };
+  }
+};
+
 // Searches book segments using MongoDB text search with regex fallback
 export const searchBookSegments = async (
   bookId: string,

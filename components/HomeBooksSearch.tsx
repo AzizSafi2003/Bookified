@@ -37,13 +37,13 @@ const HomeBooksSearch = ({ initialQuery }: { initialQuery: string }) => {
   };
 
   return (
-    <div className="library-search-wrapper">
+    <div className="flex items-center bg-white border border-[var(--border-subtle)] rounded-lg overflow-hidden w-full sm:w-80">
       <Input
         type="text"
         name="q"
         value={query}
         placeholder="Search by title or author"
-        className="library-search-input border-0 rounded-none shadow-none focus-visible:ring-0"
+        className="flex-1 py-2 px-4 outline-none text-[var(--text-primary)] placeholder:text-[var(--text-muted)] border-0 rounded-none shadow-none focus-visible:ring-0"
         onChange={(event) => handleChange(event.target.value)}
       />
       <Button type="button" variant="ghost" size="icon" aria-label="Search books">

@@ -35,12 +35,12 @@ const Transcript = ({
 
   if (isEmpty) {
     return (
-      <div className="transcript-empty">
+      <div className="flex flex-col items-center justify-center min-h-[350px] text-center flex-1">
         <Mic className="size-12 text-[#212a3b] mb-4" />
-        <h2 className="transcript-empty-text">
+        <h2 className="text-[var(--text-primary)] text-lg font-bold">
           <b>No conversation yet</b>
         </h2>
-        <p className="transcript-empty-hint">
+        <p className="text-[var(--text-muted)] text-sm mt-1">
           Click the mic button above to start talking
         </p>
       </div>
@@ -50,22 +50,22 @@ const Transcript = ({
   return (
     <div
       ref={scrollRef}
-      className="transcript-messages overflow-y-auto pr-2 flex-1"
+      className="flex flex-col gap-4 sm:gap-6 p-4 sm:p-6 flex-1 overflow-y-auto pr-2 scroll-smooth [&::-webkit-scrollbar]:w-[6px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-[#d4c4a8] [&::-webkit-scrollbar-thumb]:rounded-[3px] hover:[&::-webkit-scrollbar-thumb]:bg-[#c4b498]"
     >
       {messages.map((message, index) => (
         <div
           key={index}
-          className={`transcript-message ${
+          className={`animate-in fade-in slide-in-from-bottom-2 duration-300 ${
             message.role === "user"
-              ? "transcript-message-user"
-              : "transcript-message-assistant"
+              ? "flex justify-end"
+              : "flex justify-start"
           }`}
         >
           <div
-            className={`transcript-bubble ${
+            className={`max-w-[80%] px-6 py-4 text-base font-medium leading-7 rounded-2xl ${
               message.role === "user"
-                ? "transcript-bubble-user"
-                : "transcript-bubble-assistant"
+                ? "bg-[#663820] text-white rounded-br-sm"
+                : "bg-[#f3e4c7] text-[#212a3b] rounded-bl-sm"
             }`}
           >
             {message.content}
@@ -75,20 +75,20 @@ const Transcript = ({
 
       {/* User Streaming Message */}
       {currentUserMessage && (
-        <div className="transcript-message transcript-message-user">
-          <div className="transcript-bubble transcript-bubble-user">
+        <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 flex justify-end">
+          <div className="max-w-[80%] px-6 py-4 text-base font-medium leading-7 rounded-2xl bg-[#663820] text-white rounded-br-sm">
             {currentUserMessage}
-            <span className="transcript-cursor" />
+            <span className="inline-block w-0.5 h-5 ml-1 bg-black animate-pulse" />
           </div>
         </div>
       )}
 
       {/* Assistant Streaming Message */}
       {currentMessage && (
-        <div className="transcript-message transcript-message-assistant">
-          <div className="transcript-bubble transcript-bubble-assistant">
+        <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 flex justify-start">
+          <div className="max-w-[80%] px-6 py-4 text-base font-medium leading-7 rounded-2xl bg-[#f3e4c7] text-[#212a3b] rounded-bl-sm">
             {currentMessage}
-            <span className="transcript-cursor" />
+            <span className="inline-block w-0.5 h-5 ml-1 bg-black animate-pulse" />
           </div>
         </div>
       )}

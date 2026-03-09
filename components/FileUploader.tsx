@@ -53,12 +53,14 @@ const FileUploader = <T extends FieldValues>({
 
   return (
     <FormItem className="w-full">
-      <FormLabel className="form-label">{label}</FormLabel>
+      <FormLabel className="text-lg font-medium text-black mb-2 block">
+        {label}
+      </FormLabel>
       <FormControl>
         <div
           className={cn(
-            "upload-dropzone border-2 border-dashed border-[#8B7355]/20",
-            isUploaded && "upload-dropzone-uploaded",
+            "flex flex-col items-center justify-center h-[165px] rounded-[6px] cursor-pointer transition-all border-2 border-dashed border-[#8B7355]/20",
+            isUploaded ? "bg-[#f3e4c7]" : "bg-white hover:bg-gray-50",
           )}
           onClick={() => !disabled && inputRef.current?.click()}
         >
@@ -73,22 +75,24 @@ const FileUploader = <T extends FieldValues>({
 
           {isUploaded ? (
             <div className="flex flex-col items-center relative w-full px-4">
-              <p className="upload-dropzone-text line-clamp-1">
+              <p className="text-[#663820] text-lg font-medium text-center line-clamp-1">
                 {(value as File).name}
               </p>
               <button
                 type="button"
                 onClick={onRemove}
-                className="upload-dropzone-remove mt-2"
+                className="flex items-center justify-center w-6 h-6 text-red-500 transition-colors cursor-pointer hover:text-red-600 mt-2"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
           ) : (
             <>
-              <Icon className="upload-dropzone-icon" />
-              <p className="upload-dropzone-text">{placeholder}</p>
-              <p className="upload-dropzone-hint">{hint}</p>
+              <Icon className="w-12 h-12 mb-2 text-[#8B7355]" />
+              <p className="text-[#777] text-lg font-medium text-center">
+                {placeholder}
+              </p>
+              <p className="text-[#777] text-sm mt-1">{hint}</p>
             </>
           )}
         </div>

@@ -62,7 +62,7 @@ const HeroSection = () => {
           </div>
 
           {/* Right Part */}
-          <div className="bg-white p-4 rounded-[10px] min-w-65 max-w-70 z-10 shadow-soft-md list-none">
+          <div className="bg-white p-4 rounded-[10px] min-w-65 max-w-70 z-10 [box-shadow:var(--shadow-soft-md)] list-none">
             <ul className="space-y-6">
               <li className="flex items-start gap-3 list-none">
                 <div className="w-10 h-10 min-w-10 min-h-10 rounded-full border border-gray-300 flex items-center justify-center font-medium text-lg list-none">
