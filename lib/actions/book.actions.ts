@@ -201,6 +201,8 @@ export const replaceBookSegments = async (
   clerkId: string,
   segments: TextSegment[],
 ) => {
+  let session: mongoose.ClientSession | undefined;
+
   try {
     await connectToDatabase();
 
@@ -217,28 +219,44 @@ export const replaceBookSegments = async (
       return { success: false, error: "Book not found" };
     }
 
-    await BookSegment.deleteMany({ bookId });
+    // Start transaction session
+    session = await mongoose.startSession();
 
-    const segmentsToInsert = segments.map(
-      ({ text, segmentIndex, pageNumber, wordCount }) => ({
-        clerkId: userId,
+    await session.withTransaction(async () => {
+      // Delete existing segments - use _id filter type
+      await BookSegment.deleteMany(
+        { bookId: new mongoose.Types.ObjectId(bookId) },
+        { session },
+      );
+
+      // Prepare new segments
+      const segmentsToInsert = segments.map(
+        ({ text, segmentIndex, pageNumber, wordCount }) => ({
+          clerkId: userId,
+          bookId: new mongoose.Types.ObjectId(bookId),
+          content: text,
+          segmentIndex,
+          pageNumber,
+          wordCount,
+        }),
+      );
+
+      // Insert new segments if any
+      if (segmentsToInsert.length > 0) {
+        await BookSegment.insertMany(segmentsToInsert, { session });
+      }
+
+      // Update total segments count
+      await Book.findByIdAndUpdate(
         bookId,
-        content: text,
-        segmentIndex,
-        pageNumber,
-        wordCount,
-      }),
-    );
-
-    if (segmentsToInsert.length > 0) {
-      await BookSegment.insertMany(segmentsToInsert);
-    }
-
-    await Book.findByIdAndUpdate(bookId, { totalSegments: segmentsToInsert.length });
+        { totalSegments: segmentsToInsert.length },
+        { session },
+      );
+    });
 
     return {
       success: true,
-      data: { segmentsCreated: segmentsToInsert.length },
+      data: { segmentsCreated: segments.length },
     };
   } catch (e) {
     console.error("Error replacing book segments", e);
@@ -246,6 +264,11 @@ export const replaceBookSegments = async (
       success: false,
       error: e,
     };
+  } finally {
+    // Always end session if it was created
+    if (session) {
+      await session.endSession();
+    }
   }
 };
 
